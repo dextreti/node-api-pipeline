@@ -7,3 +7,6 @@ npx prisma init --datasource-provider postgresql
   DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=public"
 3- exec
 npx prisma db pull
+4- npx prisma generate
+5- install express
+npm install express
