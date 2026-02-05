@@ -9,9 +9,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm install
-# Generamos el cliente dentro de la imagen
-RUN npx prisma generate
+RUN npm install && \
+    npx prisma generate
 
 # Copiamos el resto del código
 COPY . .
