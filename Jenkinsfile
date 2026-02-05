@@ -34,7 +34,7 @@ pipeline {
                     # Correr el nuevo contenedor
                     docker run -d \
                       --name node-api-container \
-                      -p 3000:3000 \                      
+                      -p 3000:3000 \
                       -e DATABASE_URL="${DATABASE_URL}" \
                       node-api-northwind:latest
                 """
