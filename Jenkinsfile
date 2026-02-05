@@ -24,8 +24,8 @@ pipeline {
                     
                     docker.image('sonarsource/sonar-scanner-cli').inside {
                         
-                        withSonarQubeEnv('SonarServer') { 
-                            sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=."
+                        withSonarQubeEnv('SonarServer') {                             
+                            sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
                         }
                     }
 
