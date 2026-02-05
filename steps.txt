@@ -1,0 +1,9 @@
+1-
+npm install prisma@6.3.0 --save-dev
+npm install @prisma/client@6.3.0
+2- init prisma
+npx prisma init --datasource-provider postgresql
+- configure .env
+  DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=public"
+3- exec
+npx prisma db pull
