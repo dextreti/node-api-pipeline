@@ -11,6 +11,16 @@ async function getStatus() {
   return "OK";
 }
 
+// BUG PARA FORZAR FALLO EN JENKINS
+function testingBugs() {
+    let x = 10;
+    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
+    
+    if (x === x) { // Bug: Comparación idéntica (siempre es true)
+        return "esto es un error de lógica";
+    }
+}
+
 // Endpoint para probar la conexión con Northwind
 app.get('/products', async (req, res) => {
   try {
