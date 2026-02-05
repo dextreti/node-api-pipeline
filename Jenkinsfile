@@ -24,4 +24,21 @@ pipeline {
             }
         }
     }
+    stage('Deploy API') {
+            steps {
+                sh '''
+                    # Detener el contenedor si ya existe
+                    docker stop node-api-container || true
+                    docker rm node-api-container || true
+                    
+                    # Correr el nuevo contenedor
+                    docker run -d \
+                      --name node-api-container \
+                      -p 3000:3000 \
+                      --network host \
+                      -e DATABASE_URL="${DATABASE_URL}" \
+                      node-api-northwind:latest
+                '''
+            }
+        }
 }
