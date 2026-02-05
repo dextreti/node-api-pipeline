@@ -18,6 +18,24 @@ pipeline {
             }
             
         }
+        stage('Static Analysis') {
+            agent {
+                docker {
+                    image 'sonarsource/sonar-scanner-cli'
+                }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.projectKey=node-api-northwind \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://192.168.0.31:9000 \
+                        -Dsonar.login=squ_c97c13e52604bfab54ec4450eba4f80195ba40f9
+                    '''
+                }
+            }
+        }
         stage('Build Docker Image') {
             steps {                
                 sh 'docker build -t node-api-northwind:latest .'
