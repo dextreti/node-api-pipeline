@@ -7,6 +7,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+async function getStatus() {
+  return "OK";
+}
+
 // Endpoint para probar la conexión con Northwind
 app.get('/products', async (req, res) => {
   try {

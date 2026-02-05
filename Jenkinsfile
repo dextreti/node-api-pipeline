@@ -18,24 +18,27 @@ pipeline {
             }
             
         }
-        stage('Static Analysis') {
-            agent {
-                docker {
-                    image 'sonarsource/sonar-scanner-cli'
-                }
-            }
+        stage('SonarQube Analysis') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        sonar-scanner \
-                        -Dsonar.projectKey=node-api-northwind \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://192.168.0.31:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    '''
+                script {
+                    
+                    docker.image('sonarsource/sonar-scanner-cli').inside {
+                        
+                        withSonarQubeEnv('SonarServer') { 
+                            sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=."
+                        }
+                    }
+                                        
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
+                        }
+                    }
                 }
             }
         }
+        
         stage('Build Docker Image') {
             steps {                
                 sh 'docker build -t node-api-northwind:latest .'
