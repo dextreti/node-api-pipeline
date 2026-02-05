@@ -26,7 +26,7 @@ pipeline {
     }
     stage('Deploy API') {
             steps {
-                sh '''
+                sh """
                     # Detener el contenedor si ya existe
                     docker stop node-api-container || true
                     docker rm node-api-container || true
@@ -37,7 +37,7 @@ pipeline {
                       -p 3000:3000 \                      
                       -e DATABASE_URL="${DATABASE_URL}" \
                       node-api-northwind:latest
-                '''
+                """
             }
         }
 }
