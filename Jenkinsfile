@@ -31,7 +31,7 @@ pipeline {
                         -Dsonar.projectKey=node-api-northwind \
                         -Dsonar.sources=. \
                         -Dsonar.host.url=http://192.168.0.31:9000 \
-                        -Dsonar.login=squ_c97c13e52604bfab54ec4450eba4f80195ba40f9
+                        -Dsonar.login=${SONAR_TOKEN}
                     '''
                 }
             }
