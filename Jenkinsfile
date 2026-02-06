@@ -57,7 +57,8 @@ pipeline {
                     sh "docker rm -f ${containerName} || true"
 
                     // Corremos el nuevo contenedor con el puerto específico                    
-                    sh "docker run -d --name ${containerName} -p ${hostPort}:3000 node-api-test-image:latest"
+                    //sh "docker run -d --name ${containerName} -p ${hostPort}:3000 node-api-test-image:latest"                    
+                    sh "docker run -d --name ${containerName} -p ${hostPort}:3000 -e DATABASE_URL=${DATABASE_URL} node-api-test-image:latest"
                 }
             }
     }
