@@ -63,5 +63,20 @@ pipeline {
                 }
             }
     }
+    post {
+        failure {
+            script {
+                // Obtenemos el autor del commit para saber debe resolver
+                def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
+                echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
+                
+                // Aquí podrías integrar un comando de mail o slack
+                // emailext (to: "${commitAuthor}", subject: "Bug detectado en SonarQube", body: "Revisa el análisis...")
+            }
+        }
+        success {
+            echo "Despliegue exitoso. ¡Buen trabajo!"
+        }
+    }
         
 }
