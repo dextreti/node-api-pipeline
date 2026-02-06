@@ -7,9 +7,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-async function getStatus() {
-  return "OK";
-}
+// async function getStatus() {
+//   return "OK";
+// }
 
 // BUG PARA FORZAR FALLO EN JENKINS
 // function testingBugs() {
