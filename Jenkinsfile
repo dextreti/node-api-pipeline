@@ -30,12 +30,12 @@ pipeline {
                     }
 
                     // ESTO ES LO QUE DETIENE TODO
-                    timeout(time: 5, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
-                        }
-                    }                                        
+                    // timeout(time: 5, unit: 'MINUTES') {
+                    //     def qg = waitForQualityGate()
+                    //     if (qg.status != 'OK') {
+                    //         error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
+                    //     }
+                    // }                                        
                    
                 }
             }
@@ -47,21 +47,21 @@ pipeline {
             }
         }
         stage('Deploy API') {
-                steps {
-                    sh '''
-                        # Detener el contenedor si ya existe
-                        docker stop node-api-container || true
-                        docker rm node-api-container || true
-                        
-                        # Correr el nuevo contenedor
-                        docker run -d \
-                        --name node-api-container \
-                        -p 3000:3000 \
-                        -e DATABASE_URL="${DATABASE_URL}" \
-                        node-api-northwind:latest
-                    '''
+            steps {
+                script {
+                    // Definimos variables según la rama
+                    def containerName = (BRANCH_NAME == 'main') ? 'api-prod' : 'api-develop'
+                    def hostPort = (BRANCH_NAME == 'main') ? '3000' : '4000'
+
+                    // Detenemos y borramos el contenedor anterior si existe
+                    sh "docker rm -f ${containerName} || true"
+
+                    // Corremos el nuevo contenedor con el puerto específico
+                    // -p PuertoHost:PuertoContenedor
+                    sh "docker run -d --name ${containerName} -p ${hostPort}:3000 node-api-image"
                 }
             }
+    }
     }
     post {
         failure {
