@@ -29,13 +29,13 @@ pipeline {
                         }
                     }
 
-                    // ESTO ES LO QUE DETIENE TODO
-                    // timeout(time: 5, unit: 'MINUTES') {
-                    //     def qg = waitForQualityGate()
-                    //     if (qg.status != 'OK') {
-                    //         error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
-                    //     }
-                    // }                                        
+                    //ESTO ES LO QUE DETIENE TODO
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
+                        }
+                    }                                        
                    
                 }
             }
