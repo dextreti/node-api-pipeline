@@ -28,8 +28,7 @@ pipeline {
                             sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
                         }
                     }
-
-                    //ESTO ES LO QUE DETIENE TODO
+                    
                     timeout(time: 5, unit: 'MINUTES') {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
