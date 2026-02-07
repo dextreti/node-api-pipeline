@@ -27,7 +27,8 @@ pipeline {
                         withSonarQubeEnv('SonarServer') {                             
                             //sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
                             // Esto asegura que cada rama tenga su propio espacio en SonarQube
-                            sh "sonar-scanner -Dsonar.projectKey=node-api-branch-${env.BRANCH_NAME} -Dsonar.sources=."
+                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-${env.BRANCH_NAME} -Dsonar.sources=."
+                            sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
                         }
                     }
                     
