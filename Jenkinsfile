@@ -18,28 +18,28 @@ pipeline {
             }
             
         }
-        // stage('SonarQube Analysis') {
-        //     steps {
-        //         script {
+        stage('SonarQube Validate code') {
+            steps {
+                script {
                     
-        //             docker.image('sonarsource/sonar-scanner-cli').inside {
+                    docker.image('sonarsource/sonar-scanner-cli').inside {
                         
-        //                 withSonarQubeEnv('SonarServer') {                             
-        //                     sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
-        //                 }
-        //             }
+                        withSonarQubeEnv('SonarServer') {                             
+                            sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
+                        }
+                    }
 
-        //             ESTO ES LO QUE DETIENE TODO
-        //             timeout(time: 5, unit: 'MINUTES') {
-        //                 def qg = waitForQualityGate()
-        //                 if (qg.status != 'OK') {
-        //                     error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
-        //                 }
-        //             }                                        
+                    ESTO ES LO QUE DETIENE TODO
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
+                        }
+                    }                                        
                    
-        //         }
-        //     }
-        // }
+                }
+            }
+        }
         
         stage('Build Docker Image') {
             steps {                
