@@ -68,18 +68,26 @@ pipeline {
     }
     }
     post {
+        always {
+            // Esta notificación se enviará al final del pipeline, sin importar el resultado.
+            // Es útil para un resumen general o para notificar inicio/fin.
+            slackSend (channel: '#tu-canal-slack', message: "El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha terminado con estado: ${currentBuild.currentResult}.")
+        }
         failure {
             script {
                 // Obtenemos el autor del commit para saber debe resolver
                 def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
                 echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
+                               
                 
-                // Aquí podrías integrar un comando de mail o slack
-                // emailext (to: "${commitAuthor}", subject: "Bug detectado en SonarQube", body: "Revisa el análisis...")
+                // Notificación de Slack para fallos
+                slackSend (channel: '#tu-canal-slack', message: "🚨 ¡ERROR! El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha fallado en ${env.BUILD_URL}. Autor: ${commitAuthor}", color: 'danger')
             }
-        }
+        }        
         success {
             echo "Despliegue exitoso. ¡Buen trabajo!"
+            // Notificación de Slack para éxitos
+            slackSend (channel: '#tu-canal-slack', message: "✅ ÉXITO: El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) se ha completado correctamente en ${env.BUILD_URL}.", color: 'good')
         }
     }
         
