@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-function saveBugs() {
+function saveBug() {
     let x = 10;
     x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
     
