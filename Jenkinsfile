@@ -56,7 +56,7 @@ pipeline {
     post {
         always {
             slackSend (
-                //tokenCredentialId: 'slack-webhook-url', // Use the ID directly
+                tokenCredentialId: 'slack-webhook-url', // Use the ID directly
                 channel: '#devops-alerts',
                 message: "El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha terminado con estado: ${currentBuild.currentResult}."
             )
