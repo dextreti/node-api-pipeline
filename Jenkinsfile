@@ -16,35 +16,24 @@ pipeline {
                 sh 'npx prisma generate'
                 sh 'npx prisma validate'
             }
-            
         }
         stage('SonarQube Validate code') {
             steps {
                 script {
-                    
                     docker.image('sonarsource/sonar-scanner-cli').inside {
-                        
                         withSonarQubeEnv('SonarServer') {                             
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
-                            // Esto asegura que cada rama tenga su propio espacio en SonarQube
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-${env.BRANCH_NAME} -Dsonar.sources=."
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-main -Dsonar.sources=."
                             sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
                         }
                     }
-                    
                     timeout(time: 5, unit: 'MINUTES') {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
                             error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
                         }
                     }                                        
-                   
                 }
             }
         }
-        
         stage('Build Docker Image') {
             steps {                
                 sh 'docker build -t node-api-test-image:latest .'
@@ -53,52 +42,47 @@ pipeline {
         stage('Deploy API') {
             steps {
                 script {
-                    // Definimos variables según la rama
                     def containerName = (BRANCH_NAME == 'main') ? 'node-api-test-prod' : 'node-api-test-develop'
                     def hostPort = (BRANCH_NAME == 'main') ? '3000' : '4000'
 
-                    // Detenemos y borramos el contenedor anterior si existe
-                    sh "docker rm -f ${containerName} || true"
-
-                    // Corremos el nuevo contenedor con el puerto específico                    
-                    //sh "docker run -d --name ${containerName} -p ${hostPort}:3000 node-api-test-image:latest"                    
+                    sh "docker rm -f ${containerName} || true"                
                     sh "docker run -d --name ${containerName} -p ${hostPort}:3000 -e DATABASE_URL=${DATABASE_URL} node-api-test-image:latest"
                 }
             }
+        }
     }
-    }
+    
+    
     post {
-        withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
-            always {
+        always {
+            slackSend (
+                tokenCredentialId: 'slack-webhook-url', // Use the ID directly
+                channel: '#devops-alerts',
+                message: "El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha terminado con estado: ${currentBuild.currentResult}."
+            )
+        }
+        failure {
+            script {
+                // We calculate the author here inside the script block
+                def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
+                echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
+                
                 slackSend (
-                    webhook: "${SLACK_WEBHOOK}",
+                    tokenCredentialId: 'slack-webhook-url',
                     channel: '#devops-alerts',
-                    message: "El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha terminado con estado: ${currentBuild.currentResult}."
-                )
-            }
-            failure {
-                script {
-                    def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
-                    echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
-                    
-                    slackSend (
-                        webhook: "${SLACK_WEBHOOK}",
-                        channel: '#devops-alerts',
-                        message: "🚨 ¡ERROR! El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha fallado en ${env.BUILD_URL}. Autor: ${commitAuthor}",
-                        color: 'danger'
-                    )
-                }
-            }
-            success {
-                echo "Despliegue exitoso. ¡Buen trabajo!"
-                slackSend (
-                    webhook: "${SLACK_WEBHOOK}",
-                    channel: '#devops-alerts',
-                    message: "✅ ÉXITO: El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) se ha completado correctamente en ${env.BUILD_URL}.",
-                    color: 'good'
+                    message: "🚨 ¡ERROR! El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha fallado en ${env.BUILD_URL}. Autor: ${commitAuthor}",
+                    color: 'danger'
                 )
             }
         }
+        success {
+            echo "Despliegue exitoso. ¡Buen trabajo!"
+            slackSend (
+                tokenCredentialId: 'slack-webhook-url',
+                channel: '#devops-alerts',
+                message: "✅ ÉXITO: El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) se ha completado correctamente en ${env.BUILD_URL}.",
+                color: 'good'
+            )
+        }
     }
-        
 }
