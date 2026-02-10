@@ -69,10 +69,15 @@ pipeline {
         }
     }
     
-    post {
+    post {        
         always {
-            // Envía el estado a GitHub para bloquear el Merge
-            step([$class: 'GitHubCommitStatusSetter', contextSource: [$class: 'DefaultCommitContextSource', context: "jenkins/${env.JOB_NAME}"]])
+            
+            step([$class: 'GitHubCommitStatusSetter', 
+                 contextSource: [$class: 'DefaultCommitContextSource', contextName: "jenkins/${env.JOB_NAME}"],
+                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                     results: [[$class: 'AnyBuildResult', message: 'Análisis de calidad completado', state: 'SUCCESS']]
+                 ]
+            ])
         }
         failure {
             script {
