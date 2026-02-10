@@ -73,7 +73,7 @@ pipeline {
         always {
             
             step([$class: 'GitHubCommitStatusSetter', 
-                 contextSource: [$class: 'DefaultCommitContextSource', contextName: "jenkins/${env.JOB_NAME}"],
+                 contextSource: [$class: 'DefaultCommitContextSource', contextName: 'node-api-branch-develop'],
                  statusResultSource: [$class: 'ConditionalStatusResultSource', 
                      results: [[$class: 'AnyBuildResult', message: 'Análisis de calidad completado', state: 'SUCCESS']]
                  ]
