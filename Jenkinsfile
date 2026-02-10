@@ -68,26 +68,36 @@ pipeline {
     }
     }
     post {
-        always {
-            // Esta notificación se enviará al final del pipeline, sin importar el resultado.
-            // Es útil para un resumen general o para notificar inicio/fin.
-            slackSend (channel: '#tu-canal-slack', message: "El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha terminado con estado: ${currentBuild.currentResult}.")
-        }
-        failure {
-            script {
-                // Obtenemos el autor del commit para saber debe resolver
-                def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
-                echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
-                               
-                
-                // Notificación de Slack para fallos
-                slackSend (channel: '#tu-canal-slack', message: "🚨 ¡ERROR! El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha fallado en ${env.BUILD_URL}. Autor: ${commitAuthor}", color: 'danger')
+        withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
+            always {
+                slackSend (
+                    webhook: "${SLACK_WEBHOOK}",
+                    channel: '#devops-alerts',
+                    message: "El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha terminado con estado: ${currentBuild.currentResult}."
+                )
             }
-        }        
-        success {
-            echo "Despliegue exitoso. ¡Buen trabajo!"
-            // Notificación de Slack para éxitos
-            slackSend (channel: '#tu-canal-slack', message: "✅ ÉXITO: El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) se ha completado correctamente en ${env.BUILD_URL}.", color: 'good')
+            failure {
+                script {
+                    def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
+                    echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
+                    
+                    slackSend (
+                        webhook: "${SLACK_WEBHOOK}",
+                        channel: '#devops-alerts',
+                        message: "🚨 ¡ERROR! El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha fallado en ${env.BUILD_URL}. Autor: ${commitAuthor}",
+                        color: 'danger'
+                    )
+                }
+            }
+            success {
+                echo "Despliegue exitoso. ¡Buen trabajo!"
+                slackSend (
+                    webhook: "${SLACK_WEBHOOK}",
+                    channel: '#devops-alerts',
+                    message: "✅ ÉXITO: El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) se ha completado correctamente en ${env.BUILD_URL}.",
+                    color: 'good'
+                )
+            }
         }
     }
         
