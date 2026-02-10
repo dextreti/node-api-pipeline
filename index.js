@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-function sendBug() {
+function Bugs() {
     let x = 10;
     x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
     
@@ -15,6 +15,7 @@ function sendBug() {
         return "esto es un error de lógica";
     }
 }
+
 
 function sendBug() {
     let x = 10;
