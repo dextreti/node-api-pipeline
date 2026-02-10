@@ -1,5 +1,10 @@
 pipeline {
     agent any
+    options {
+        // Esto crea el check en GitHub automáticamente
+        //gitLabCommitStatus(name: 'jenkins-ci')
+        githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
+    }
     environment {        
         DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
         SLACK_BASE_URL="https://hooks.slack.com/services/"
@@ -65,6 +70,10 @@ pipeline {
     }
     
     post {
+        always {
+            // Envía el estado a GitHub para bloquear el Merge
+            step([$class: 'GitHubCommitStatusSetter', contextSource: [$class: 'DefaultCommitContextSource', context: "jenkins/${env.JOB_NAME}"]])
+        }
         failure {
             script {
                 def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
