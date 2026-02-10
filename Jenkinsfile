@@ -68,7 +68,7 @@ pipeline {
                 echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
                 
                 slackSend (
-                    //tokenCredentialId: 'slack-webhook-url',
+                    tokenCredentialId: 'slack-webhook-url',
                     channel: '#devops-alerts',
                     message: "🚨 ¡ERROR! El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) ha fallado en ${env.BUILD_URL}. Autor: ${commitAuthor}",
                     color: 'danger'
@@ -78,7 +78,7 @@ pipeline {
         success {
             echo "Despliegue exitoso. ¡Buen trabajo!"
             slackSend (
-                //tokenCredentialId: 'slack-webhook-url',
+                tokenCredentialId: 'slack-webhook-url',
                 channel: '#devops-alerts',
                 message: "✅ ÉXITO: El pipeline '${env.JOB_NAME}' (${env.BRANCH_NAME}) se ha completado correctamente en ${env.BUILD_URL}.",
                 color: 'good'
