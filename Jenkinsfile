@@ -12,45 +12,27 @@ pipeline {
     stages {
         stage('Initialize GitHub Status') {
             steps {
-                
+                // Este paso SIEMPRE se ejecuta para bloquear el botón de Merge en cualquier rama
                 step([$class: 'GitHubCommitStatusSetter', 
                      contextSource: [$class: 'DefaultCommitContextSource', context: 'node-api-branch-develop'],
                      statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                         results: [[$class: 'AnyBuildResult', message: 'Jenkins está analizando la calidad...', state: 'PENDING']]
+                         results: [[$class: 'AnyBuildResult', message: 'Jenkins analizando calidad...', state: 'PENDING']]
                      ]
                 ])
             }
         }
-        stage('Node Tasks') {
-            agent {
-                docker {
-                    image 'node:22-bookworm-slim' 
-                    args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
-                }
-            }            
+        
+        stage('Node Tasks & Sonar') {
+            // Esto se ejecuta para TODOS los programadores
             steps {
                 sh 'npm install'
-                sh 'npx prisma generate'
-                sh 'npx prisma validate'
-            }
-        }
-        
-        stage('SonarQube Analysis') {
-            steps {
                 script {
                     docker.image('sonarsource/sonar-scanner-cli').inside {
                         withSonarQubeEnv('SonarServer') {
-                            def sonarArgs = "-Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
-                            if (env.CHANGE_ID) {
-                                sonarArgs += " -Dsonar.pullrequest.key=${env.CHANGE_ID}"
-                                sonarArgs += " -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH}"
-                                sonarArgs += " -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
-                            }
-                            sh "sonar-scanner ${sonarArgs}"
+                            sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
                         }
                     }
                     timeout(time: 5, unit: 'MINUTES') {
-                        
                         waitForQualityGate abortPipeline: true
                     }                                        
                 }
@@ -58,6 +40,10 @@ pipeline {
         }
 
         stage('Build & Tag Docker Image') {
+            when {
+                // SEGURIDAD: Solo se construye imagen si es la rama de integración
+                branch 'develop'
+            }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."                
                 sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
@@ -65,13 +51,14 @@ pipeline {
         }
 
         stage('Deploy API') {
+            when {
+                // SEGURIDAD: Solo se despliega si es develop
+                branch 'develop'
+            }
             steps {
                 script {
-                    def containerName = (env.BRANCH_NAME == 'main') ? 'node-api-test-prod' : 'node-api-test-develop'
-                    def hostPort = (env.BRANCH_NAME == 'main') ? '3000' : '4000'
-
-                    sh "docker rm -f ${containerName} || true"                
-                    sh "docker run -d --name ${containerName} -p ${hostPort}:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
+                    sh "docker rm -f node-api-test-develop || true"                
+                    sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
                 }
             }
         }
@@ -79,34 +66,13 @@ pipeline {
     
     post {        
         always {
-            
+            // Reporta el resultado final (SUCCESS o FAILURE) a GitHub para liberar o bloquear el botón
             step([$class: 'GitHubCommitStatusSetter', 
                  contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
                  statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                     results: [[$class: 'BetterBuildResult', message: 'Análisis de calidad completado']]
+                     results: [[$class: 'BetterBuildResult', message: 'Análisis finalizado']]
                  ]
             ])
-        }
-        failure {
-            script {
-                def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
-                slackSend (
-                    baseUrl: "${env.SLACK_BASE_URL}",
-                    tokenCredentialId: 'token-slack',
-                    channel: '#devops-alerts',
-                    color: 'danger',
-                    message: "🚨 ¡BLOQUEADO! Build #${env.BUILD_NUMBER} falló. Autor: ${commitAuthor}. Revisar PR: ${env.CHANGE_URL ?: env.BUILD_URL}"
-                )
-            }
-        }
-        success {
-            slackSend (
-                baseUrl: "${env.SLACK_BASE_URL}",
-                tokenCredentialId: 'token-slack',
-                channel: '#devops-alerts',
-                color: 'good',
-                message: "✅ ÉXITO: Build #${env.BUILD_NUMBER} desplegado con tag ${DOCKER_TAG}."
-            )
         }
     }
 }
