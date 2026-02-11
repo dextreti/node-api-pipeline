@@ -13,6 +13,17 @@ pipeline {
         IMAGE_NAME = "node-api-test-image"
     }    
     stages {
+        stage('Initialize GitHub Status') {
+            steps {
+                // Esto hará que la pestaña "Checks" pase de 0 a 1 inmediatamente
+                step([$class: 'GitHubCommitStatusSetter', 
+                     contextSource: [$class: 'DefaultCommitContextSource', contextName: "jenkins/${env.JOB_NAME}"],
+                     statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                         results: [[$class: 'AnyBuildResult', message: 'Verificando calidad...', state: 'PENDING']]
+                     ]
+                ])
+            }
+        }
         stage('Node Tasks') {
             agent {
                 docker {
@@ -73,7 +84,7 @@ pipeline {
         always {
             
             step([$class: 'GitHubCommitStatusSetter', 
-                 contextSource: [$class: 'DefaultCommitContextSource', contextName: 'node-api-branch-develop'],
+                 contextSource: [$class: 'DefaultCommitContextSource', contextName: "jenkins/${env.JOB_NAME}"],
                  statusResultSource: [$class: 'ConditionalStatusResultSource', 
                      results: [[$class: 'AnyBuildResult', message: 'Análisis de calidad completado', state: 'SUCCESS']]
                  ]
