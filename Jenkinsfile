@@ -11,9 +11,7 @@ pipeline {
     stages {
         stage('Status Inicial') {
             steps {
-                // Bloquea el botón en GitHub inmediatamente
                 step([$class: 'GitHubCommitStatusSetter', 
-                     contextSource: [$class: 'DefaultCommitContextSource', context: 'node-api-branch-develop'],
                      statusResultSource: [$class: 'ConditionalStatusResultSource', 
                          results: [[$class: 'AnyBuildResult', message: 'Analizando...', state: 'PENDING']]
                      ]
@@ -21,7 +19,7 @@ pipeline {
             }
         }
         
-        stage('Analisis de Calidad') {
+        stage('Calidad Node') {
             agent {
                 docker {
                     image 'node:22-bookworm-slim' 
@@ -31,9 +29,17 @@ pipeline {
             steps {
                 sh 'npm install'
                 sh 'npx prisma generate'
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
                 script {
-                    withSonarQubeEnv('SonarServer') {
-                        sh "npx sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
+                    // Solo agregamos --user root para que el contenedor pueda leer tu workspace en Debian
+                    docker.image('sonarsource/sonar-scanner-cli').inside("--user root") {
+                        withSonarQubeEnv('SonarServer') {
+                            sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
+                        }
                     }
                     timeout(time: 5, unit: 'MINUTES') {
                         waitForQualityGate abortPipeline: true
@@ -54,9 +60,7 @@ pipeline {
     
     post {        
         always {
-            // Reporta SUCCESS o FAILURE real a GitHub
             step([$class: 'GitHubCommitStatusSetter', 
-                 contextSource: [$class: 'DefaultCommitContextSource', context: 'node-api-branch-develop'],
                  statusResultSource: [$class: 'ConditionalStatusResultSource', 
                      results: [[$class: 'AnyBuildResult', message: 'Análisis finalizado']]
                  ]
