@@ -17,7 +17,7 @@ pipeline {
             steps {
                 // Esto hará que la pestaña "Checks" pase de 0 a 1 inmediatamente
                 step([$class: 'GitHubCommitStatusSetter', 
-                     contextSource: [$class: 'DefaultCommitContextSource', contextName: "jenkins/${env.JOB_NAME}"],
+                     contextSource: [$class: 'DefaultCommitContextSource', contextName: 'node-api-branch-develop'],
                      statusResultSource: [$class: 'ConditionalStatusResultSource', 
                          results: [[$class: 'AnyBuildResult', message: 'Verificando calidad...', state: 'PENDING']]
                      ]
