@@ -51,9 +51,21 @@ pipeline {
             }
         }
 
+        // stage('Build & Deploy') {
+        //     when { 
+        //         expression { env.ghprbTargetBranch == 'develop' || env.GIT_BRANCH.contains('develop') } 
+        //     }
+        //     steps {
+        //         sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
+        //         sh "docker rm -f node-api-test-develop || true"                
+        //         sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
+        //     }
+        // }
         stage('Build & Deploy') {
             when { 
-                expression { env.ghprbTargetBranch == 'develop' || env.GIT_BRANCH.contains('develop') } 
+                expression { 
+                    env.ghprbTargetBranch == 'develop' || (env.GIT_BRANCH && env.GIT_BRANCH.contains('develop')) 
+                } 
             }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
