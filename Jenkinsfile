@@ -20,7 +20,7 @@ pipeline {
             steps {
                 // Simplificamos la notificación para evitar errores de clases no encontradas
                 step([$class: 'GitHubCommitStatusSetter',
-                    contextSource: [$class: 'DefaultCommitContextSource', context: "jenkins/pipeline"],
+                    contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
                     statusResultSource: [$class: 'ConditionalStatusResultSource', 
                         results: [[$class: 'AnyBuildResult', message: 'Analizando código...', state: 'PENDING']]
                     ]
@@ -78,7 +78,7 @@ pipeline {
     post {        
         always {
             step([$class: 'GitHubCommitStatusSetter',
-                contextSource: [$class: 'DefaultCommitContextSource', context: "jenkins/pipeline"],
+                contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
                     results: [[$class: 'AnyBuildResult', message: 'Pipeline finalizado']]
                 ]
