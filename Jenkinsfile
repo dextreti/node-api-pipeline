@@ -11,7 +11,6 @@ pipeline {
     stages {
         stage('Status Inicial') {
             steps {
-                // Si 'context' falla, el plugin usará el nombre del Job por defecto
                 step([$class: 'GitHubCommitStatusSetter', 
                      statusResultSource: [$class: 'ConditionalStatusResultSource', 
                          results: [[$class: 'AnyBuildResult', message: 'Analizando...', state: 'PENDING']]
@@ -36,8 +35,8 @@ pipeline {
         stage('SonarQube') {
             steps {
                 script {
-                    // Usamos la imagen dedicada para evitar líos de permisos de npx
-                    docker.image('sonarsource/sonar-scanner-cli').inside {
+                    // Solo agregamos --user root para que el contenedor pueda leer tu workspace en Debian
+                    docker.image('sonarsource/sonar-scanner-cli').inside("--user root") {
                         withSonarQubeEnv('SonarServer') {
                             sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
                         }
