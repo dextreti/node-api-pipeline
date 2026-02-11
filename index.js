@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Endpoint para probar la conexión con Northwind
 app.get('/products', async (req, res) => {
   try {
     const products = await prisma.products.findMany({
