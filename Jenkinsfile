@@ -48,8 +48,19 @@ pipeline {
             }
         }
 
+        // stage('Build & Deploy') {
+        //     when { branch 'develop' }
+        //     steps {
+        //         sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
+        //         sh "docker rm -f node-api-test-develop || true"                
+        //         sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
+        //     }
+        // }
         stage('Build & Deploy') {
-            when { branch 'develop' }
+            // Cambiamos la condición para que reconozca el Pull Request hacia develop
+            when { 
+                expression { env.ghprbTargetBranch == 'develop' || env.GIT_BRANCH == 'origin/develop' } 
+            }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
