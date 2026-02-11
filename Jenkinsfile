@@ -1,86 +1,78 @@
 pipeline {
     agent any
+    options {
+        githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
+    }
     environment {        
         DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
+        SLACK_BASE_URL="https://hooks.slack.com/services/"
+        DOCKER_TAG = "b${env.BUILD_NUMBER}"
+        IMAGE_NAME = "node-api-test-image"
     }    
     stages {
-        stage('Node Tasks') {
-            agent {
-                docker {
-                    image 'node:22-bookworm-slim' 
-                    args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
-                }
-            }            
+        stage('Initialize GitHub Status') {
+            steps {
+                // Este paso SIEMPRE se ejecuta para bloquear el botón de Merge en cualquier rama
+                step([$class: 'GitHubCommitStatusSetter', 
+                     contextSource: [$class: 'DefaultCommitContextSource', context: 'node-api-branch-develop'],
+                     statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                         results: [[$class: 'AnyBuildResult', message: 'Jenkins analizando calidad...', state: 'PENDING']]
+                     ]
+                ])
+            }
+        }
+        
+        stage('Node Tasks & Sonar') {
+            // Esto se ejecuta para TODOS los programadores
             steps {
                 sh 'npm install'
-                sh 'npx prisma generate'
-                sh 'npx prisma validate'
-            }
-            
-        }
-        stage('SonarQube Validate code') {
-            steps {
                 script {
-                    
                     docker.image('sonarsource/sonar-scanner-cli').inside {
-                        
-                        withSonarQubeEnv('SonarServer') {                             
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-northwind -Dsonar.sources=. -Dsonar.qualitygate.wait=true"
-                            // Esto asegura que cada rama tenga su propio espacio en SonarQube
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-${env.BRANCH_NAME} -Dsonar.sources=."
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
-                            //sh "sonar-scanner -Dsonar.projectKey=node-api-branch-main -Dsonar.sources=."
+                        withSonarQubeEnv('SonarServer') {
                             sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
                         }
                     }
-                    
                     timeout(time: 5, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            error "Pipeline abortado: Calidad insuficiente (Status: ${qg.status})"
-                        }
+                        waitForQualityGate abortPipeline: true
                     }                                        
-                   
                 }
             }
         }
-        
-        stage('Build Docker Image') {
-            steps {                
-                sh 'docker build -t node-api-test-image:latest .'
+
+        stage('Build & Tag Docker Image') {
+            when {
+                // SEGURIDAD: Solo se construye imagen si es la rama de integración
+                branch 'develop'
+            }
+            steps {
+                sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."                
+                sh "docker tag ${IMAGE_NAME}:${DOCKER_TAG} ${IMAGE_NAME}:latest"
             }
         }
+
         stage('Deploy API') {
+            when {
+                // SEGURIDAD: Solo se despliega si es develop
+                branch 'develop'
+            }
             steps {
                 script {
-                    // Definimos variables según la rama
-                    def containerName = (BRANCH_NAME == 'main') ? 'node-api-test-prod' : 'node-api-test-develop'
-                    def hostPort = (BRANCH_NAME == 'main') ? '3000' : '4000'
-
-                    // Detenemos y borramos el contenedor anterior si existe
-                    sh "docker rm -f ${containerName} || true"
-
-                    // Corremos el nuevo contenedor con el puerto específico                    
-                    //sh "docker run -d --name ${containerName} -p ${hostPort}:3000 node-api-test-image:latest"                    
-                    sh "docker run -d --name ${containerName} -p ${hostPort}:3000 -e DATABASE_URL=${DATABASE_URL} node-api-test-image:latest"
+                    sh "docker rm -f node-api-test-develop || true"                
+                    sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
                 }
             }
-    }
-    }
-    post {
-        failure {
-            script {
-                // Obtenemos el autor del commit para saber debe resolver
-                def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
-                echo "ATENCIÓN: El pipeline falló. Notificando a: ${commitAuthor}"
-                
-                // Aquí podrías integrar un comando de mail o slack
-                // emailext (to: "${commitAuthor}", subject: "Bug detectado en SonarQube", body: "Revisa el análisis...")
-            }
-        }
-        success {
-            echo "Despliegue exitoso. ¡Buen trabajo!"
         }
     }
-        
+    
+    post {        
+        always {
+            // Reporta el resultado final (SUCCESS o FAILURE) a GitHub para liberar o bloquear el botón
+            step([$class: 'GitHubCommitStatusSetter', 
+                 contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
+                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                     results: [[$class: 'BetterBuildResult', message: 'Análisis finalizado']]
+                 ]
+            ])
+        }
+    }
 }
