@@ -6,6 +6,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+function notices() {
+    let x = 10;
+    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
+    
+    if (x === x) { // Bug: Comparación idéntica (siempre es true)
+        return "esto es un error de lógica";
+    }
+}
 
 // Endpoint para probar la conexión con Northwind
 app.get('/products', async (req, res) => {
