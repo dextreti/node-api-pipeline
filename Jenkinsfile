@@ -1,25 +1,22 @@
 pipeline {
     agent any
     options {
-        // Esto crea el check en GitHub automáticamente
-        //gitLabCommitStatus(name: 'jenkins-ci')
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
     }
     environment {        
         DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
         SLACK_BASE_URL="https://hooks.slack.com/services/"
-        // Usamos el número de build para que cada imagen sea única
         DOCKER_TAG = "b${env.BUILD_NUMBER}"
         IMAGE_NAME = "node-api-test-image"
     }    
     stages {
         stage('Initialize GitHub Status') {
             steps {
-                // Esto hará que la pestaña "Checks" pase de 0 a 1 inmediatamente
+                
                 step([$class: 'GitHubCommitStatusSetter', 
-                     contextSource: [$class: 'DefaultCommitContextSource', contextName: 'node-api-branch-develop'],
+                     contextSource: [$class: 'DefaultCommitContextSource', context: 'node-api-branch-develop'],
                      statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                         results: [[$class: 'AnyBuildResult', message: 'Verificando calidad...', state: 'PENDING']]
+                         results: [[$class: 'AnyBuildResult', message: 'Jenkins está analizando la calidad...', state: 'PENDING']]
                      ]
                 ])
             }
@@ -43,9 +40,8 @@ pipeline {
                 script {
                     docker.image('sonarsource/sonar-scanner-cli').inside {
                         withSonarQubeEnv('SonarServer') {
-                            // Detectamos si es un PR para activar el análisis de "Código Nuevo"
                             def sonarArgs = "-Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
-                            if (env.CHANGE_ID) { // CHANGE_ID existe solo en Pull Requests
+                            if (env.CHANGE_ID) {
                                 sonarArgs += " -Dsonar.pullrequest.key=${env.CHANGE_ID}"
                                 sonarArgs += " -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH}"
                                 sonarArgs += " -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
@@ -54,6 +50,7 @@ pipeline {
                         }
                     }
                     timeout(time: 5, unit: 'MINUTES') {
+                        
                         waitForQualityGate abortPipeline: true
                     }                                        
                 }
@@ -84,9 +81,9 @@ pipeline {
         always {
             
             step([$class: 'GitHubCommitStatusSetter', 
-                 contextSource: [$class: 'DefaultCommitContextSource', contextName: "jenkins/${env.JOB_NAME}"],
+                 contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
                  statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                     results: [[$class: 'AnyBuildResult', message: 'Análisis de calidad completado', state: 'SUCCESS']]
+                     results: [[$class: 'BetterBuildResult', message: 'Análisis de calidad completado']]
                  ]
             ])
         }
