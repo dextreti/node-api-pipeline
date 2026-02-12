@@ -50,14 +50,11 @@ pipeline {
             }
         }
        
-        stage('Build & Deploy') {
-            when { 
-                allOf {
-                    // Solo si la rama es exactamente develop
-                    branch 'develop' 
-                    // Y solo si NO es un Pull Request analizado por el plugin
-                    expression { env.ghprbPullId == null } 
-                }
+        stage('Build & Deploy') {            
+             when { 
+                expression { 
+                    env.ghprbTargetBranch == 'develop' || (env.GIT_BRANCH && env.GIT_BRANCH.contains('develop')) 
+                } 
             }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
