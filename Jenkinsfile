@@ -18,8 +18,6 @@ pipeline {
         
         stage('Status Inicial') {
             steps {
-                // MODIFICACIÓN: Se cambió 'DefaultCommitContextSource' por 'ManuallyEnteredCommitContextSource'
-                // para evitar el error de "Unknown parameter context" y forzar la sincronización con GitHub.
                 step([$class: 'GitHubCommitStatusSetter',
                     contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
                     statusResultSource: [$class: 'ConditionalStatusResultSource', 
@@ -32,14 +30,17 @@ pipeline {
         stage('Calidad & Sonar') {
             steps {
                 script {
+                    // Solución para Prisma: Instalamos openssl explícitamente en el contenedor
                     docker.image('node:22-bookworm-slim').inside("--user root") {
+                        sh 'apt-get update && apt-get install -y openssl'
                         sh 'npm install'
                         sh 'npx prisma generate'
                     }
                     
+                    // Solución Error 126: Usamos la imagen oficial de SonarSource directamente
                     docker.image('sonarsource/sonar-scanner-cli').inside("--user root") {
                         withSonarQubeEnv('SonarServer') {
-                            sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
+                            sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
                         }
                     }
                     
@@ -53,35 +54,30 @@ pipeline {
         stage('Build & Deploy') {            
              when { 
                 anyOf {
-                    // Si es un PR abierto o cerrado que apunta a develop
                     expression { env.ghprbTargetBranch == 'develop' }
-                    // Si es un push directo o merge a la rama develop
                     branch 'develop'
-                    // si la variable de rama contiene develop
                     expression { env.GIT_BRANCH?.contains('develop') }
                 }
             }
             steps {
+                // Usamos comillas simples para DATABASE_URL para evitar que el shell interprete caracteres especiales
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
-                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
+                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
             }
         }      
-        
     }  
 
     post {        
         success {
-            // Solo si todo salió bien, enviamos el verde a GitHub
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                    results: [[$class: 'AnyBuildResult', message: '¡Calidad perfecta! Botón habilitado', state: 'SUCCESS']]
+                    results: [[$class: 'AnyBuildResult', message: '¡Calidad perfecta! Despliegue exitoso', state: 'SUCCESS']]
                 ]
             ])
         }
         failure {
-            // Si algo falló, nos aseguramos de que GitHub lo sepa
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
@@ -90,5 +86,4 @@ pipeline {
             ])
         }
     }
-    
 }
