@@ -31,22 +31,26 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node-ci-master:latest'
-                    args '--user root' // Para evitar problemas de permisos con node_modules
+                    // Esta es la imagen que creamos con el Dockerfile.build
+                    image 'node-api-agent:latest' 
+                    args '--user root' 
                 }
             }
             steps {
                 script {
-                    // 1. Instalación limpia
-                    sh 'npm ci' 
+                    // 1. Instalación de dependencias del proyecto
+                    sh 'npm install' 
                     
-                    // 2. Generar Prisma (ahora con OpenSSL presente)
+                    // 2. Generar Prisma - OpenSSL ya está en la imagen, así que funcionará)
                     sh 'npx prisma generate'
 
-                    // 3. SonarQube (usando el scanner nativo de la imagen)
-                    def scannerHome = tool 'SonarScanner'
+                    // 3. Ejecutar Sonar directamente desde el binario de la imagen                    
                     withSonarQubeEnv('SonarServer') {
-                        sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
+                        sh "sonar-scanner \
+                            -Dsonar.projectKey=node-api-branch-develop \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
 
                     // 4. Quality Gate
@@ -55,8 +59,7 @@ pipeline {
                     }
                 }
             }
-        }        
-        
+        }
 
         stage('Build & Deploy') {            
              when { 
