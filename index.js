@@ -10,7 +10,7 @@ app.use(express.json());
 app.get('/products', async (req, res) => {
   try {
     const products = await prisma.products.findMany({
-      take: 17, 
+      take: 20, 
       select: {
         product_id: true,
         product_name: true,
