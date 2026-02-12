@@ -62,18 +62,27 @@ pipeline {
                 sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
             }
         }
-    }
-    
+    }  
+
     post {        
-        always {
-            // MODIFICACIÓN: Aquí también se cambió a 'ManuallyEnteredCommitContextSource'.
-            // Esto garantiza que el mensaje de éxito llegue a GitHub con el nombre que espera la regla de protección.
+        success {
+            // Solo si todo salió bien, enviamos el verde a GitHub
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                    results: [[$class: 'AnyBuildResult', message: 'Pipeline finalizado']]
+                    results: [[$class: 'AnyBuildResult', message: '¡Calidad perfecta! Botón habilitado', state: 'SUCCESS']]
+                ]
+            ])
+        }
+        failure {
+            // Si algo falló, nos aseguramos de que GitHub lo sepa
+            step([$class: 'GitHubCommitStatusSetter',
+                contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
+                statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                    results: [[$class: 'AnyBuildResult', message: 'Error en el pipeline o calidad', state: 'FAILURE']]
                 ]
             ])
         }
     }
+    
 }
