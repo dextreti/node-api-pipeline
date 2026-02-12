@@ -44,6 +44,7 @@ pipeline {
                     sh 'npx prisma generate'
 
                     // 3. SonarQube (usando el scanner nativo de la imagen)
+                    def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('SonarServer') {
                         sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
                     }
