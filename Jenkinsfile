@@ -12,6 +12,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                cleanWs()
                 checkout scm
             }
         }
@@ -26,30 +27,35 @@ pipeline {
                 ])
             }
         }
-        
-        stage('Calidad & Sonar') {
-            steps {
-                script {
-                    // Solución para Prisma: Instalamos openssl explícitamente en el contenedor
-                    docker.image('node:22-bookworm-slim').inside("--user root") {
-                        sh 'apt-get update && apt-get install -y openssl'
-                        sh 'npm install'
-                        sh 'npx prisma generate'
-                    }
-                    
-                    // Solución Error 126: Usamos la imagen oficial de SonarSource directamente
-                    docker.image('sonarsource/sonar-scanner-cli').inside("--user root") {
-                        withSonarQubeEnv('SonarServer') {
-                            sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
-                        }
-                    }
-                    
-                    timeout(time: 5, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: true
-                    }                                        
+
+        stage('Calidad y Sonar') {
+            agent {
+                docker {
+                    image 'node-ci-master:latest'
+                    args '--user root' // Para evitar problemas de permisos con node_modules
                 }
             }
-        }
+            steps {
+                script {
+                    // 1. Instalación limpia
+                    sh 'npm ci' 
+                    
+                    // 2. Generar Prisma (ahora con OpenSSL presente)
+                    sh 'npx prisma generate'
+
+                    // 3. SonarQube (usando el scanner nativo de la imagen)
+                    withSonarQubeEnv('SonarServer') {
+                        sh "sonar-scanner -Dsonar.projectKey=node-api-branch-develop -Dsonar.sources=."
+                    }
+
+                    // 4. Quality Gate
+                    timeout(time: 5, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: true
+                    }
+                }
+            }
+        }        
+        
 
         stage('Build & Deploy') {            
              when { 
