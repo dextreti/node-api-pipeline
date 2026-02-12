@@ -2,7 +2,7 @@ pipeline {
     agent any 
     options {
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
-        skipDefaultCheckout() // Evitamos doble checkout para ganar velocidad
+        skipDefaultCheckout() 
     }
     environment {        
         DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
@@ -18,9 +18,10 @@ pipeline {
         
         stage('Status Inicial') {
             steps {
-                // Simplificamos la notificación para evitar errores de clases no encontradas
+                // MODIFICACIÓN: Se cambió 'DefaultCommitContextSource' por 'ManuallyEnteredCommitContextSource'
+                // para evitar el error de "Unknown parameter context" y forzar la sincronización con GitHub.
                 step([$class: 'GitHubCommitStatusSetter',
-                    contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
+                    contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
                     statusResultSource: [$class: 'ConditionalStatusResultSource', 
                         results: [[$class: 'AnyBuildResult', message: 'Analizando código...', state: 'PENDING']]
                     ]
@@ -31,13 +32,11 @@ pipeline {
         stage('Calidad & Sonar') {
             steps {
                 script {
-                    // Ejecutamos TODO lo de Node dentro del contenedor para que encuentre 'npm'
                     docker.image('node:22-bookworm-slim').inside("--user root") {
                         sh 'npm install'
                         sh 'npx prisma generate'
                     }
                     
-                    // Escaneo de Sonar
                     docker.image('sonarsource/sonar-scanner-cli').inside("--user root") {
                         withSonarQubeEnv('SonarServer') {
                             sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
@@ -51,16 +50,6 @@ pipeline {
             }
         }
 
-        // stage('Build & Deploy') {
-        //     when { 
-        //         expression { env.ghprbTargetBranch == 'develop' || env.GIT_BRANCH.contains('develop') } 
-        //     }
-        //     steps {
-        //         sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
-        //         sh "docker rm -f node-api-test-develop || true"                
-        //         sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
-        //     }
-        // }
         stage('Build & Deploy') {
             when { 
                 expression { 
@@ -77,8 +66,10 @@ pipeline {
     
     post {        
         always {
+            // MODIFICACIÓN: Aquí también se cambió a 'ManuallyEnteredCommitContextSource'.
+            // Esto garantiza que el mensaje de éxito llegue a GitHub con el nombre que espera la regla de protección.
             step([$class: 'GitHubCommitStatusSetter',
-                contextSource: [$class: 'DefaultCommitContextSource', context: "node-api-branch-develop"],
+                contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
                     results: [[$class: 'AnyBuildResult', message: 'Pipeline finalizado']]
                 ]
