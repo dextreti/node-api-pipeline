@@ -1,7 +1,8 @@
 pipeline {
-    agent any
+    agent any 
     options {
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
+        skipDefaultCheckout() 
     }
     environment {        
         DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
@@ -9,72 +10,89 @@ pipeline {
         IMAGE_NAME = "node-api-test-image"
     }    
     stages {
-        stage('Status Inicial') {
+        stage('Checkout') {
             steps {
-                step([$class: 'GitHubCommitStatusSetter', 
-                     statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                         results: [[$class: 'AnyBuildResult', message: 'Analizando...', state: 'PENDING']]
-                     ]
-                ])
+                cleanWs()
+                checkout scm
             }
         }
         
-        stage('Calidad Node') {
+        stage('Status Inicial') {
+            steps {
+                step([$class: 'GitHubCommitStatusSetter',
+                    contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
+                    statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                        results: [[$class: 'AnyBuildResult', message: 'Analizando código...', state: 'PENDING']]
+                    ]
+                ])
+            }
+        }
+
+        stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node:22-bookworm-slim' 
-                    args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
+                    // Esta es la imagen que creamos con el Dockerfile.build
+                    image 'node-api-agent:latest' 
+                    args '--user root' 
                 }
-            }            
-            steps {
-                sh 'npm install'
-                sh 'npx prisma generate'
             }
-        }
-
-        stage('SonarQube') {
             steps {
                 script {
-                    // Solo agregamos --user root para que el contenedor pueda leer tu workspace en Debian
-                    docker.image('sonarsource/sonar-scanner-cli').inside("--user root") {
-                        withSonarQubeEnv('SonarServer') {
-                            sh "sonar-scanner -Dsonar.projectKey=${env.JOB_NAME} -Dsonar.sources=."
-                        }
+                    // 1. Instalación de dependencias del proyecto
+                    sh 'npm install' 
+                    
+                    // 2. Generar Prisma - OpenSSL ya está en la imagen, así que funcionará)
+                    sh 'npx prisma generate'
+
+                    // 3. Ejecutar Sonar directamente desde el binario de la imagen                    
+                    withSonarQubeEnv('SonarServer') {
+                        sh "sonar-scanner \
+                            -Dsonar.projectKey=node-api-branch-develop \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
+
+                    // 4. Quality Gate
                     timeout(time: 5, unit: 'MINUTES') {
                         waitForQualityGate abortPipeline: true
-                    }                                        
+                    }
                 }
             }
         }
 
-        // stage('Build & Deploy') {
-        //     when { branch 'develop' }
-        //     steps {
-        //         sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
-        //         sh "docker rm -f node-api-test-develop || true"                
-        //         sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
-        //     }
-        // }
-        stage('Build & Deploy') {
-            // Cambiamos la condición para que reconozca el Pull Request hacia develop
-            when { 
-                expression { env.ghprbTargetBranch == 'develop' || env.GIT_BRANCH == 'origin/develop' } 
+        stage('Build & Deploy') {            
+             when { 
+                anyOf {
+                    expression { env.ghprbTargetBranch == 'develop' }
+                    branch 'develop'
+                    expression { env.GIT_BRANCH?.contains('develop') }
+                }
             }
             steps {
+                // Usamos comillas simples para DATABASE_URL para evitar que el shell interprete caracteres especiales
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
-                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
+                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
             }
-        }
-    }
-    
+        }      
+    }  
+
     post {        
-        always {
-            step([$class: 'GitHubCommitStatusSetter', 
-                 statusResultSource: [$class: 'ConditionalStatusResultSource', 
-                     results: [[$class: 'AnyBuildResult', message: 'Análisis finalizado']]
-                 ]
+        success {
+            step([$class: 'GitHubCommitStatusSetter',
+                contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
+                statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                    results: [[$class: 'AnyBuildResult', message: '¡Calidad perfecta! Despliegue exitoso', state: 'SUCCESS']]
+                ]
+            ])
+        }
+        failure {
+            step([$class: 'GitHubCommitStatusSetter',
+                contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
+                statusResultSource: [$class: 'ConditionalStatusResultSource', 
+                    results: [[$class: 'AnyBuildResult', message: 'Error en el pipeline o calidad', state: 'FAILURE']]
+                ]
             ])
         }
     }

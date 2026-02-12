@@ -7,81 +7,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-function Bug7() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-
-function Bug6() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-
-function Bug5() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-function Bug4() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-function Bug3() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-
-function Bug2() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-
-function Bug() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-
-function notices() {
-    let x = 10;
-    x = 20; // Dead store: Sonar dirá "para qué asignas 10 si luego pones 20"
-    
-    if (x === x) { // Bug: Comparación idéntica (siempre es true)
-        return "esto es un error de lógica";
-    }
-}
-
-// Endpoint para probar la conexión con Northwind
 app.get('/products', async (req, res) => {
   try {
     const products = await prisma.products.findMany({
-      take: 10, // Solo traemos 10 para probar
+      take: 17, 
       select: {
         product_id: true,
         product_name: true,
