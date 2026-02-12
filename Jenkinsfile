@@ -49,19 +49,25 @@ pipeline {
                 }
             }
         }
-       
+
         stage('Build & Deploy') {            
              when { 
-                expression { 
-                    env.ghprbTargetBranch == 'develop' || (env.GIT_BRANCH && env.GIT_BRANCH.contains('develop')) 
-                } 
+                anyOf {
+                    // Si es un PR abierto o cerrado que apunta a develop
+                    expression { env.ghprbTargetBranch == 'develop' }
+                    // Si es un push directo o merge a la rama develop
+                    branch 'develop'
+                    // si la variable de rama contiene develop
+                    expression { env.GIT_BRANCH?.contains('develop') }
+                }
             }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
-                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL=${DATABASE_URL} ${IMAGE_NAME}:${DOCKER_TAG}"
+                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
             }
-        }
+        }      
+        
     }  
 
     post {        
