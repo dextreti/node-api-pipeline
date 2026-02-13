@@ -34,7 +34,8 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node-api-agent:latest'                    
+                    image 'node-api-agent:latest'
+                    reuseNode true
                     args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
