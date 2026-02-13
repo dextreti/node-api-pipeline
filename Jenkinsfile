@@ -36,7 +36,6 @@ pipeline {
                 docker {
                     image 'node-api-agent:latest'                    
                     args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/jenkins_home:/var/jenkins_home'
-        }
                 }
             }
             steps {
@@ -45,7 +44,6 @@ pipeline {
                     sh 'npx prisma generate'
 
                     withSonarQubeEnv('SonarServer') {
-                        // Eliminamos npx porque sonar-scanner ya es global en tu imagen
                         sh "sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
@@ -65,11 +63,10 @@ pipeline {
                 anyOf {
                     branch 'develop'
                     expression { env.GIT_BRANCH?.contains('develop') }
-                    expression { env.CHANGE_TARGET == 'develop' } // Para Pull Requests a develop
+                    expression { env.CHANGE_TARGET == 'develop' } 
                 }
             }
             steps {
-                // Importante: DATABASE_URL se pasa con comillas simples en el -e para evitar errores de escape
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
                 sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
