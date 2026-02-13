@@ -55,12 +55,19 @@ pipeline {
                     sh 'npx prisma generate'
                     
                     withSonarQubeEnv('SonarServer') {
-                        sh "chmod +x /usr/local/lib/node_modules/sonar-scanner/bin/sonar-scanner || true"
-                        sh "npx sonar-scanner \
+                        sh """
+                            node /usr/local/lib/node_modules/sonar-scanner/index.js \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
+                            -Dsonar.login=${SONAR_AUTH_TOKEN}
+                        """
+                        // sh "chmod +x /usr/local/lib/node_modules/sonar-scanner/bin/sonar-scanner || true"
+                        // sh "npx sonar-scanner \
+                        //     -Dsonar.projectKey=node-api-branch-develop \
+                        //     -Dsonar.sources=. \
+                        //     -Dsonar.host.url=${SONAR_HOST_URL} \
+                        //     -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
 
                     timeout(time: 5, unit: 'MINUTES') {
