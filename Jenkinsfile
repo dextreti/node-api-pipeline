@@ -12,15 +12,19 @@ pipeline {
         SONAR_HOST_URL = "http://192.168.0.31:9000"        
         SONAR_AUTH_TOKEN = credentials('SONAR_TOKEN')
     }    
-    stages {
-        stage('Checkout') {
+    stages {      
+        stage('Checkout') {                        
             steps {                
+                ws('/var/jenkins_home/workspace/node-api-branch-develop') {
+                    sh 'find . -mindepth 1 -delete'
+                    checkout scm
+                }
                 //cleanWs()
                 //cleanWs deleteDirs: true, notFailBuild: true
                 //sh 'rm -rf *'
-                sh 'find . -mindepth 1 -delete'   
+                //sh 'find . -mindepth 1 -delete'   
                 // 2. DESCARGAMOS el código (esto es lo que faltó)
-                checkout scm             
+                //checkout scm             
                 // Guardamos el resultado del checkout en una variable
                 // script {
                 //     def scmInfo = checkout scm
@@ -30,7 +34,7 @@ pipeline {
                 // }
             }
         }
-        //version-7
+        //version-8
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
