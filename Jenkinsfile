@@ -46,7 +46,7 @@ pipeline {
                     image 'node-api-agent:latest'
                     reuseNode true
                     // El flag --rm es vital para que el agente se borre solo al terminar
-                    args '-u root --rm -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
+                    //args '-u root --rm -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
             steps {
