@@ -1,12 +1,8 @@
-pipeline {
+pipeline {    
     agent any 
     options { 
-        // Prohíbimos que se ejecuten dos builds del mismo proyecto al mismo tiempo       
-        // Si hacen un commit y luego abres un PR rápido
         disableConcurrentBuilds()
-        // jenkins no descargue el código automáticamente al empezar".
         skipDefaultCheckout()  
-
         timeout(time: 1, unit: 'HOURS')
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
     }
@@ -20,37 +16,19 @@ pipeline {
     stages {      
         stage('Checkout') {                        
             steps {                
-                script {
-                    // 1. Forzamos a Docker a soltar cualquier rastro
-                    sh "docker ps -aq | xargs -r docker rm -f"
+                script {                                        
+                    //  Solo contenedores de la app o agentes colgados
+                    sh "docker rm -f node-api-test-develop node-api-agent || true"
                     
-                    // 2. Usamos la limpieza nativa de Jenkins
+                    // contenedor que tenga montado este Workspace específico
+                    sh "docker ps -a -q --filter 'volume=${WORKSPACE}' | xargs -r docker rm -f"
+                    
                     deleteDir()
-                    
-                    // 3. Descargamos el código fresco
                     checkout scm
-                    }
-
-                // ws('/var/jenkins_home/workspace/node-api-branch-develop') {
-                //     sh 'find . -mindepth 1 -delete'
-                //     checkout scm
-                // }
-                //cleanWs()
-                //cleanWs deleteDirs: true, notFailBuild: true
-                //sh 'rm -rf *'
-                //sh 'find . -mindepth 1 -delete'   
-                // 2. DESCARGAMOS el código (esto es lo que faltó)
-                //checkout scm             
-                // Guardamos el resultado del checkout en una variable
-                // script {
-                //     def scmInfo = checkout scm
-                //     // Extraemos la rama de forma manual y segura
-                //     env.ACTUAL_BRANCH = scmInfo.GIT_BRANCH.replace('origin/', '')
-                //     echo "Rama detectada con éxito: ${env.ACTUAL_BRANCH}"
-                // }
+                }
             }
         }
-        //version-10
+
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -67,14 +45,13 @@ pipeline {
                 docker {
                     image 'node-api-agent:latest'
                     reuseNode true
-                    //args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
+                    // El flag --rm es vital para que el agente se borre solo al terminar
                     args '-u root --rm -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
             steps {
                 script {
                     sh 'npm install'
-                    sh 'npm install sonarqube-scanner --save-dev'
                     sh 'npx prisma generate'
                     
                     withSonarQubeEnv('SonarServer') {
@@ -94,12 +71,10 @@ pipeline {
 
         stage('Build & Deploy') {
             when {                 
-                //expression { env.ACTUAL_BRANCH == 'develop' }
                 anyOf {
                     branch 'develop'
-                    not { changeRequest() }                    
-                    // expression { env.GIT_BRANCH?.contains('develop') }
-                    //expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }                
+                    // Detecta si es un Pull Request cuyo destino final es 'develop'
+                    expression { env.CHANGE_TARGET == 'develop' }
                 }   
             }
             steps {
@@ -112,14 +87,11 @@ pipeline {
 
     post {        
         always {
-            //cleanWs deleteDirs: true, notFailBuild: true
-            //sh 'find . -maxdepth 1 -not -name "." -exec rm -rf {} +'
+            // Limpieza del workspace no se llene de basura
             cleanWs(
-                deleteDirs: true,            // Borra directorios
-                notFailBuild: true,          // Que no falle el build si no puede borrar algo
-                patterns: [
-                    [pattern: '**/.*', type: 'INCLUDE'] // Incluye archivos ocultos
-                ]
+                deleteDirs: true,
+                notFailBuild: true,
+                patterns: [[pattern: '**/.*', type: 'INCLUDE']]
             )
         }
         
