@@ -6,20 +6,35 @@ pipeline {
         skipDefaultCheckout()
     }
     environment {        
-        DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
+        DATABASE_URL = "postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
         DOCKER_TAG = "b${env.BUILD_NUMBER}"
         IMAGE_NAME = "node-api-test-image"
         SONAR_HOST_URL = "http://192.168.0.31:9000"        
         SONAR_AUTH_TOKEN = credentials('SONAR_TOKEN')
     }    
-    stages {
-        stage('Checkout') {
-            steps {
-                cleanWs()
-                checkout scm
+    stages {      
+        stage('Checkout') {                        
+            steps {                
+                ws('/var/jenkins_home/workspace/node-api-branch-develop') {
+                    sh 'find . -mindepth 1 -delete'
+                    checkout scm
+                }
+                //cleanWs()
+                //cleanWs deleteDirs: true, notFailBuild: true
+                //sh 'rm -rf *'
+                //sh 'find . -mindepth 1 -delete'   
+                // 2. DESCARGAMOS el código (esto es lo que faltó)
+                //checkout scm             
+                // Guardamos el resultado del checkout en una variable
+                // script {
+                //     def scmInfo = checkout scm
+                //     // Extraemos la rama de forma manual y segura
+                //     env.ACTUAL_BRANCH = scmInfo.GIT_BRANCH.replace('origin/', '')
+                //     echo "Rama detectada con éxito: ${env.ACTUAL_BRANCH}"
+                // }
             }
         }
-        
+        //version-8
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -34,19 +49,19 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node-api-agent:latest' 
-                    // Combinamos argumentos: Usuario 1000, grupo docker 999 y montamos el socket
-                    args '-u 1000:1000 --group-add 999 -v /var/run/docker.sock:/var/run/docker.sock'
+                    image 'node-api-agent:latest'
+                    reuseNode true
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
             steps {
                 script {
-                    sh 'npm install' 
+                    sh 'npm install'
+                    sh 'npm install sonarqube-scanner --save-dev'
                     sh 'npx prisma generate'
-
+                    
                     withSonarQubeEnv('SonarServer') {
-                        // Eliminamos npx porque sonar-scanner ya es global en tu imagen
-                        sh "sonar-scanner \
+                        sh "npx sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
@@ -60,24 +75,37 @@ pipeline {
             }
         }
 
-        stage('Build & Deploy') {            
-             when { 
+        stage('Build & Deploy') {
+            when {                 
+                //expression { env.ACTUAL_BRANCH == 'develop' }
                 anyOf {
                     branch 'develop'
-                    expression { env.GIT_BRANCH?.contains('develop') }
-                    expression { env.CHANGE_TARGET == 'develop' } // Para Pull Requests a develop
-                }
+                    not { changeRequest() }                    
+                    // expression { env.GIT_BRANCH?.contains('develop') }
+                    //expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }                
+                }   
             }
             steps {
-                // Importante: DATABASE_URL se pasa con comillas simples en el -e para evitar errores de escape
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
                 sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
             }
-        }      
+        }
     }  
 
     post {        
+        always {
+            //cleanWs deleteDirs: true, notFailBuild: true
+            //sh 'find . -maxdepth 1 -not -name "." -exec rm -rf {} +'
+            cleanWs(
+                deleteDirs: true,            // Borra directorios
+                notFailBuild: true,          // Que no falle el build si no puede borrar algo
+                patterns: [
+                    [pattern: '**/.*', type: 'INCLUDE'] // Incluye archivos ocultos
+                ]
+            )
+        }
+        
         success {
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
