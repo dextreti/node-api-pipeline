@@ -6,7 +6,7 @@ pipeline {
         skipDefaultCheckout()
     }
     environment {        
-        DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
+        DATABASE_URL = "postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
         DOCKER_TAG = "b${env.BUILD_NUMBER}"
         IMAGE_NAME = "node-api-test-image"
         SONAR_HOST_URL = "http://192.168.0.31:9000"        
@@ -19,7 +19,7 @@ pipeline {
                 checkout scm
             }
         }
-        
+        //version-1
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
