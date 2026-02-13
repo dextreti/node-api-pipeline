@@ -4,6 +4,7 @@
 # touch Docker.build
 # nano Docker.build
 # copy and paste this code:
+# ************************
 
 FROM node:22-bookworm-slim
 
@@ -22,7 +23,7 @@ RUN npm install -g prisma sonar-scanner
 # Configuramos el directorio de trabajo
 WORKDIR /app
 
-
+# ************************
 # step 2: save
 # step 3: exec:
 # docker build -t node-api-agent:latest -f Dockerfile.build .
