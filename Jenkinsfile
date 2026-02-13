@@ -18,11 +18,17 @@ pipeline {
                 //cleanWs()
                 //cleanWs deleteDirs: true, notFailBuild: true
                 //sh 'rm -rf *'
-                sh 'find . -mindepth 1 -delete'
-                checkout scm
+                sh 'find . -mindepth 1 -delete'                
+                // Guardamos el resultado del checkout en una variable
+                // script {
+                //     def scmInfo = checkout scm
+                //     // Extraemos la rama de forma manual y segura
+                //     env.ACTUAL_BRANCH = scmInfo.GIT_BRANCH.replace('origin/', '')
+                //     echo "Rama detectada con éxito: ${env.ACTUAL_BRANCH}"
+                // }
             }
         }
-        //version-5
+        //version-6
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -63,16 +69,15 @@ pipeline {
             }
         }
 
-        stage('Build & Deploy') {            
-            //when {             
-                // anyOf {
-                //     branch 'develop'
-                //     expression { env.GIT_BRANCH?.contains('develop') }
-                //}
-                //expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }                
-            // }
+        stage('Build & Deploy') {
             when {                 
-                expression { env.BRANCH_NAME ==~ /.*develop.*/ }
+                //expression { env.ACTUAL_BRANCH == 'develop' }
+                anyOf {
+                    branch 'develop'
+                    changeRequest() 
+                    // expression { env.GIT_BRANCH?.contains('develop') }
+                    //expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }                
+                }   
             }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
