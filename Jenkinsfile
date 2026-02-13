@@ -14,8 +14,9 @@ pipeline {
     }    
     stages {
         stage('Checkout') {
-            steps {
-                cleanWs()
+            steps {                
+                //cleanWs()
+                sh 'rm -rf *'
                 checkout scm
             }
         }
@@ -76,7 +77,8 @@ pipeline {
 
     post {        
         always {
-            cleanWs() // Borrar todo (node_modules, temporales) al terminar el build
+            //cleanWs() // Borrar todo (node_modules, temporales) al terminar el build
+            sh 'rm -rf *'
         }
         success {
             step([$class: 'GitHubCommitStatusSetter',
