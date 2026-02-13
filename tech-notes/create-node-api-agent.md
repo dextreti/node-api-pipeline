@@ -26,4 +26,5 @@ WORKDIR /app
 # ************************
 # step 2: save
 # step 3: exec:
-# docker build -t node-api-agent:latest -f Dockerfile.build .
+# docker build -t node-api-agent:latest -f create-node-api-agent.build .
+
