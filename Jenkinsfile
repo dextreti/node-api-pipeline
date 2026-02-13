@@ -63,7 +63,6 @@ pipeline {
                 anyOf {
                     branch 'develop'
                     expression { env.GIT_BRANCH?.contains('develop') }
-                    expression { env.CHANGE_TARGET == 'develop' } 
                 }
             }
             steps {
