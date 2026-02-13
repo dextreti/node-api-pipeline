@@ -19,7 +19,7 @@ pipeline {
                 checkout scm
             }
         }
-        //version-2
+        //version-3
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -45,6 +45,7 @@ pipeline {
                     sh 'npx prisma generate'
 
                     withSonarQubeEnv('SonarServer') {
+                        sh "chmod +x /usr/local/lib/node_modules/sonar-scanner/bin/sonar-scanner"
                         sh "sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
