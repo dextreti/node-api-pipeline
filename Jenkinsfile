@@ -44,8 +44,8 @@ pipeline {
                     sh 'npm install' 
                     sh 'npx prisma generate'
 
-                    withSonarQubeEnv('SonarServer') {
-                        sh "chmod +x /usr/local/lib/node_modules/sonar-scanner/bin/sonar-scanner"
+                    withSonarQubeEnv('SonarServer') {                        
+                        sh "chmod +x /usr/local/bin/sonar-scanner || chmod +x /usr/local/lib/node_modules/sonar-scanner/bin/sonar-scanner"
                         sh "sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
