@@ -1,13 +1,16 @@
 pipeline {
     agent any 
-    options {
+    options {        
+        disableConcurrentBuilds() 
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
-        skipDefaultCheckout() 
+        skipDefaultCheckout()
     }
     environment {        
         DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
         DOCKER_TAG = "b${env.BUILD_NUMBER}"
         IMAGE_NAME = "node-api-test-image"
+        SONAR_HOST_URL = "http://192.168.0.31:9000"        
+        SONAR_AUTH_TOKEN = credentials('SONAR_TOKEN')
     }    
     stages {
         stage('Checkout') {
@@ -31,21 +34,18 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    // Esta es la imagen que creamos con el Dockerfile.build
                     image 'node-api-agent:latest' 
-                    args '--user root' 
+                    // Combinamos argumentos: Usuario 1000, grupo docker 999 y montamos el socket
+                    args '-u 1000:1000 --group-add 999 -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
                 script {
-                    // 1. Instalación de dependencias del proyecto
                     sh 'npm install' 
-                    
-                    // 2. Generar Prisma - OpenSSL ya está en la imagen, así que funcionará)
                     sh 'npx prisma generate'
 
-                    // 3. Ejecutar Sonar directamente desde el binario de la imagen                    
                     withSonarQubeEnv('SonarServer') {
+                        // Eliminamos npx porque sonar-scanner ya es global en tu imagen
                         sh "sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
@@ -53,7 +53,6 @@ pipeline {
                             -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
 
-                    // 4. Quality Gate
                     timeout(time: 5, unit: 'MINUTES') {
                         waitForQualityGate abortPipeline: true
                     }
@@ -64,13 +63,13 @@ pipeline {
         stage('Build & Deploy') {            
              when { 
                 anyOf {
-                    expression { env.ghprbTargetBranch == 'develop' }
                     branch 'develop'
                     expression { env.GIT_BRANCH?.contains('develop') }
+                    expression { env.CHANGE_TARGET == 'develop' } // Para Pull Requests a develop
                 }
             }
             steps {
-                // Usamos comillas simples para DATABASE_URL para evitar que el shell interprete caracteres especiales
+                // Importante: DATABASE_URL se pasa con comillas simples en el -e para evitar errores de escape
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
                 sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
