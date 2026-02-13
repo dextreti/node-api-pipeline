@@ -20,10 +20,21 @@ pipeline {
     stages {      
         stage('Checkout') {                        
             steps {                
-                ws('/var/jenkins_home/workspace/node-api-branch-develop') {
-                    sh 'find . -mindepth 1 -delete'
+                script {
+                    // 1. Forzamos a Docker a soltar cualquier rastro
+                    sh "docker ps -aq | xargs -r docker rm -f"
+                    
+                    // 2. Usamos la limpieza nativa de Jenkins
+                    deleteDir()
+                    
+                    // 3. Descargamos el código fresco
                     checkout scm
-                }
+                    }
+
+                // ws('/var/jenkins_home/workspace/node-api-branch-develop') {
+                //     sh 'find . -mindepth 1 -delete'
+                //     checkout scm
+                // }
                 //cleanWs()
                 //cleanWs deleteDirs: true, notFailBuild: true
                 //sh 'rm -rf *'
@@ -39,7 +50,7 @@ pipeline {
                 // }
             }
         }
-        //version-8
+        //version-10
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
