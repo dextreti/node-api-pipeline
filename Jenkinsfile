@@ -1,15 +1,17 @@
 pipeline {
-    agent any
-    options {
-        disableConcurrentBuilds()
+    agent any 
+    options {        
+        disableConcurrentBuilds() 
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
         skipDefaultCheckout()
     }
-    environment {
-        DATABASE_URL = "postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
-        DOCKER_TAG    = "b${env.BUILD_NUMBER}"
-        IMAGE_NAME    = "node-api-test-image"
-    }
+    environment {        
+        DATABASE_URL="postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
+        DOCKER_TAG = "b${env.BUILD_NUMBER}"
+        IMAGE_NAME = "node-api-test-image"
+        SONAR_HOST_URL = "http://192.168.0.31:9000"        
+        SONAR_AUTH_TOKEN = credentials('SONAR_TOKEN')
+    }    
     stages {
         stage('Checkout') {
             steps {
@@ -17,7 +19,7 @@ pipeline {
                 checkout scm
             }
         }
-
+        
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -32,54 +34,50 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node-api-agent:latest'
-                    args '--user root'
+                    image 'node-api-agent:latest' 
+                    // Combinamos argumentos: Usuario 1000, grupo docker 999 y montamos el socket
+                    args '-u 1000:1000 --group-add 999 -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
                 script {
-                    sh 'npm install'
+                    sh 'npm install' 
                     sh 'npx prisma generate'
 
-                    // SonarQube simplificado
                     withSonarQubeEnv('SonarServer') {
-                        sh """
-                        sonar-scanner \
+                        // Eliminamos npx porque sonar-scanner ya es global en tu imagen
+                        sh "sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
-                            -Dsonar.sources=.
-                        """
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
 
-                    // Quality Gate
-                    timeout(time: 10, unit: 'MINUTES') {
+                    timeout(time: 5, unit: 'MINUTES') {
                         waitForQualityGate abortPipeline: true
                     }
                 }
             }
         }
 
-        stage('Build & Deploy') {
-            when { branch 'develop' }
-            steps {
-                sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
-                
-                // Detener y eliminar container si existe
-                sh "docker rm -f node-api-test-develop || true"
-                
-                // Ejecutar container con reinicio automático
-                sh """
-                docker run -d \
-                    --name node-api-test-develop \
-                    -p 4000:3000 \
-                    -e DATABASE_URL='${env.DATABASE_URL}' \
-                    --restart unless-stopped \
-                    ${IMAGE_NAME}:${DOCKER_TAG}
-                """
+        stage('Build & Deploy') {            
+             when { 
+                anyOf {
+                    branch 'develop'
+                    expression { env.GIT_BRANCH?.contains('develop') }
+                    expression { env.CHANGE_TARGET == 'develop' } // Para Pull Requests a develop
+                }
             }
-        }
-    }
+            steps {
+                // Importante: DATABASE_URL se pasa con comillas simples en el -e para evitar errores de escape
+                sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
+                sh "docker rm -f node-api-test-develop || true"                
+                sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
+            }
+        }      
+    }  
 
-    post {
+    post {        
         success {
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
