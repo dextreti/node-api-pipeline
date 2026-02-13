@@ -22,7 +22,7 @@ pipeline {
                 checkout scm
             }
         }
-        //version-4
+        //version-5
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -70,14 +70,14 @@ pipeline {
                 //     expression { env.GIT_BRANCH?.contains('develop') }
                 //}
                 expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }
+                
                 }
-            }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
                 sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
             }
-        }      
+        }
     }  
 
     post {        
