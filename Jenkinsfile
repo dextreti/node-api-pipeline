@@ -88,11 +88,10 @@ pipeline {
 
         stage('Build & Deploy') {
             when {                 
-                anyOf {
+                anyOf {                    
+                    expression { env.GIT_BRANCH == 'origin/develop' }                    
                     branch 'develop'
-                    // Detecta si es un Pull Request cuyo destino final es 'develop'
-                    expression { env.CHANGE_TARGET == 'develop' }
-                }   
+                }
             }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
