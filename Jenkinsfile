@@ -64,14 +64,16 @@ pipeline {
         }
 
         stage('Build & Deploy') {            
-             when {             
+            //when {             
                 // anyOf {
                 //     branch 'develop'
                 //     expression { env.GIT_BRANCH?.contains('develop') }
                 //}
-                expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }
-                
-                }
+                //expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }                
+            // }
+            when {                 
+                expression { env.BRANCH_NAME ==~ /.*develop.*/ }
+            }
             steps {
                 sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                 sh "docker rm -f node-api-test-develop || true"                
