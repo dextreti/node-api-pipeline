@@ -17,11 +17,12 @@ pipeline {
             steps {                
                 //cleanWs()
                 //cleanWs deleteDirs: true, notFailBuild: true
-                sh 'rm -rf *'
+                //sh 'rm -rf *'
+                sh 'find . -mindepth 1 -delete'
                 checkout scm
             }
         }
-        //version-3
+        //version-4
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -80,7 +81,7 @@ pipeline {
     post {        
         always {
             //cleanWs deleteDirs: true, notFailBuild: true
-            sh 'rm -rf *'
+            sh 'find . -maxdepth 1 -not -name "." -exec rm -rf {} +'
         }
         success {
             step([$class: 'GitHubCommitStatusSetter',
