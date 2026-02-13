@@ -16,6 +16,7 @@ pipeline {
         stage('Checkout') {
             steps {                
                 //cleanWs()
+                //cleanWs deleteDirs: true, notFailBuild: true
                 sh 'rm -rf *'
                 checkout scm
             }
@@ -42,7 +43,8 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'npm install' 
+                    sh 'npm install'
+                    sh 'npm install sonarqube-scanner --save-dev'
                     sh 'npx prisma generate'
                     
                     withSonarQubeEnv('SonarServer') {
@@ -77,7 +79,7 @@ pipeline {
 
     post {        
         always {
-            //cleanWs() // Borrar todo (node_modules, temporales) al terminar el build
+            //cleanWs deleteDirs: true, notFailBuild: true
             sh 'rm -rf *'
         }
         success {
