@@ -1,9 +1,14 @@
 pipeline {
     agent any 
-    options {        
-        disableConcurrentBuilds() 
+    options { 
+        // Prohíbimos que se ejecuten dos builds del mismo proyecto al mismo tiempo       
+        // Si hacen un commit y luego abres un PR rápido
+        disableConcurrentBuilds()
+        // jenkins no descargue el código automáticamente al empezar".
+        skipDefaultCheckout()  
+
+        timeout(time: 1, unit: 'HOURS')
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
-        skipDefaultCheckout()
     }
     environment {        
         DATABASE_URL = "postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
@@ -15,10 +20,21 @@ pipeline {
     stages {      
         stage('Checkout') {                        
             steps {                
-                ws('/var/jenkins_home/workspace/node-api-branch-develop') {
-                    sh 'find . -mindepth 1 -delete'
+                script {
+                    // 1. Forzamos a Docker a soltar cualquier rastro
+                    sh "docker ps -aq | xargs -r docker rm -f"
+                    
+                    // 2. Usamos la limpieza nativa de Jenkins
+                    deleteDir()
+                    
+                    // 3. Descargamos el código fresco
                     checkout scm
-                }
+                    }
+
+                // ws('/var/jenkins_home/workspace/node-api-branch-develop') {
+                //     sh 'find . -mindepth 1 -delete'
+                //     checkout scm
+                // }
                 //cleanWs()
                 //cleanWs deleteDirs: true, notFailBuild: true
                 //sh 'rm -rf *'
@@ -34,7 +50,7 @@ pipeline {
                 // }
             }
         }
-        //version-8
+        //version-10
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -51,7 +67,8 @@ pipeline {
                 docker {
                     image 'node-api-agent:latest'
                     reuseNode true
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
+                    //args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
+                    args '-u root --rm -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
             steps {
