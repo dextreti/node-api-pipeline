@@ -30,7 +30,7 @@ pipeline {
                 // }
             }
         }
-        //version-6
+        //version-7
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -76,7 +76,7 @@ pipeline {
                 //expression { env.ACTUAL_BRANCH == 'develop' }
                 anyOf {
                     branch 'develop'
-                    changeRequest() 
+                    not { changeRequest() }                    
                     // expression { env.GIT_BRANCH?.contains('develop') }
                     //expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }                
                 }   
