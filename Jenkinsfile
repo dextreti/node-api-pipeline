@@ -19,7 +19,7 @@ pipeline {
                 checkout scm
             }
         }
-        //version-1
+        //version-2
         stage('Status Inicial') {
             steps {
                 step([$class: 'GitHubCommitStatusSetter',
@@ -35,7 +35,7 @@ pipeline {
             agent {
                 docker {
                     image 'node-api-agent:latest'                    
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/jenkins_home:/var/jenkins_home'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
             steps {
@@ -74,6 +74,9 @@ pipeline {
     }  
 
     post {        
+        always {
+            cleanWs() // Borrar todo (node_modules, temporales) al terminar el build
+        }
         success {
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
