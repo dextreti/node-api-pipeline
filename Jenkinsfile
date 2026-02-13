@@ -1,9 +1,14 @@
 pipeline {
     agent any 
-    options {        
-        disableConcurrentBuilds() 
+    options { 
+        // Prohíbimos que se ejecuten dos builds del mismo proyecto al mismo tiempo       
+        // Si hacen un commit y luego abres un PR rápido
+        disableConcurrentBuilds()
+        // jenkins no descargue el código automáticamente al empezar".
+        skipDefaultCheckout()  
+
+        timeout(time: 1, unit: 'HOURS')
         githubProjectProperty(projectUrlStr: 'https://github.com/dextreti/node-api-pipeline/')
-        skipDefaultCheckout()
     }
     environment {        
         DATABASE_URL = "postgresql://postgres:postgres@192.168.0.31:55432/northwind?schema=public"
@@ -51,7 +56,8 @@ pipeline {
                 docker {
                     image 'node-api-agent:latest'
                     reuseNode true
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
+                    //args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
+                    args '-u root --rm -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/docker/volumes/dextre_jenkins_home/_data:/var/jenkins_home'
                 }
             }
             steps {
