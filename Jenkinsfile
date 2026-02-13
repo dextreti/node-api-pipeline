@@ -34,8 +34,9 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node-api-agent:latest'
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                    image 'node-api-agent:latest'                    
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v /var/jenkins_home:/var/jenkins_home'
+        }
                 }
             }
             steps {
