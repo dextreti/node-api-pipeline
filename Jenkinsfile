@@ -64,10 +64,12 @@ pipeline {
         }
 
         stage('Build & Deploy') {            
-             when { 
-                anyOf {
-                    branch 'develop'
-                    expression { env.GIT_BRANCH?.contains('develop') }
+             when {             
+                // anyOf {
+                //     branch 'develop'
+                //     expression { env.GIT_BRANCH?.contains('develop') }
+                //}
+                expression { env.BRANCH_NAME == 'develop' || env.GIT_BRANCH?.contains('develop') }
                 }
             }
             steps {
@@ -81,8 +83,16 @@ pipeline {
     post {        
         always {
             //cleanWs deleteDirs: true, notFailBuild: true
-            sh 'find . -maxdepth 1 -not -name "." -exec rm -rf {} +'
+            //sh 'find . -maxdepth 1 -not -name "." -exec rm -rf {} +'
+            cleanWs(
+                deleteDirs: true,            // Borra directorios
+                notFailBuild: true,          // Que no falle el build si no puede borrar algo
+                patterns: [
+                    [pattern: '**/.*', type: 'INCLUDE'] // Incluye archivos ocultos
+                ]
+            )
         }
+        
         success {
             step([$class: 'GitHubCommitStatusSetter',
                 contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "node-api-branch-develop"],
