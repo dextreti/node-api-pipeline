@@ -34,9 +34,8 @@ pipeline {
         stage('Calidad y Sonar') {
             agent {
                 docker {
-                    image 'node-api-agent:latest' 
-                    // Combinamos argumentos: Usuario 1000, grupo docker 999 y montamos el socket
-                    args '-u 1000:1000 --group-add 999 -v /var/run/docker.sock:/var/run/docker.sock'
+                    image 'node-api-agent:latest'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
