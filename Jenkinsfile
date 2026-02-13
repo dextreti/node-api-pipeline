@@ -43,10 +43,9 @@ pipeline {
                 script {
                     sh 'npm install' 
                     sh 'npx prisma generate'
-
-                    withSonarQubeEnv('SonarServer') {                        
-                        sh "chmod +x /usr/local/bin/sonar-scanner || chmod +x /usr/local/lib/node_modules/sonar-scanner/bin/sonar-scanner"
-                        sh "sonar-scanner \
+                    
+                    withSonarQubeEnv('SonarServer') {
+                        sh "npx sonar-scanner \
                             -Dsonar.projectKey=node-api-branch-develop \
                             -Dsonar.sources=. \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
