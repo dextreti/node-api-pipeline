@@ -18,7 +18,9 @@ pipeline {
                 //cleanWs()
                 //cleanWs deleteDirs: true, notFailBuild: true
                 //sh 'rm -rf *'
-                sh 'find . -mindepth 1 -delete'                
+                sh 'find . -mindepth 1 -delete'   
+                // 2. DESCARGAMOS el código (esto es lo que faltó)
+                checkout scm             
                 // Guardamos el resultado del checkout en una variable
                 // script {
                 //     def scmInfo = checkout scm
