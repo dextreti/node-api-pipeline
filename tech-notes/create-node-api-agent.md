@@ -1,8 +1,8 @@
-# *** create image :node-api-agent ***
+# *** get image docker hub ***
 
-# step 1: create this file with name Docker.build into server 
-# touch Docker.build
-# nano Docker.build
+# step 1: create this file with name create-node-api-agent into server 
+# touch create-node-api-agent.build
+# nano create-node-api-agent.build
 # copy and paste this code:
 # ************************
 
@@ -25,6 +25,6 @@ WORKDIR /app
 
 # ************************
 # step 2: save
-# step 3: exec:
+# step 3: now create own image node-api-agent:
 # docker build -t node-api-agent:latest -f create-node-api-agent.build .
 
