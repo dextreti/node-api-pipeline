@@ -86,15 +86,23 @@ pipeline {
             }
         }
 
-        stage('Verificación de Reglas') {
+        stage('Verificación y Deploy') {
             steps {
                 script {
-                    if (env.GIT_BRANCH?.contains('develop') || env.CHANGE_TARGET == 'develop') {
-                        echo "✅ REGLA CUMPLIDA: Se procederá al despliegue."
+                    // Extraemos la rama actual directamente del sistema
+                    def actualBranch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    echo "--- RAMA DETECTADA POR SISTEMA: ${actualBranch} ---"
+
+                    if (actualBranch == 'develop' || actualBranch.contains('develop') || actualBranch.contains('PR-')) {
+                        echo "✅ VALIDACIÓN EXITOSA. Iniciando Docker..."
+                        
+                        sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
+                        sh "docker rm -f node-api-test-develop || true"                
+                        sh "docker run -d --name node-api-test-develop -p 4000:3000 -e DATABASE_URL='${env.DATABASE_URL}' ${IMAGE_NAME}:${DOCKER_TAG}"
+                        
+                        echo "🚀 API DESPLEGADA EN PUERTO 4000"
                     } else {
-                        // AQUÍ es donde verías el mensaje si NO va a entrar al siguiente stage
-                        echo "❌ REGLA FALLIDA: El despliegue se saltará porque la rama no es develop."
-                        echo "Razón: GIT_BRANCH=${env.GIT_BRANCH}, CHANGE_TARGET=${env.CHANGE_TARGET}, BRANCH_NAME} = ${env.BRANCH_NAME}"
+                        echo "❌ NO ES DEVELOP. Se cancela el despliegue para mantener el orden."
                     }
                 }
             }
