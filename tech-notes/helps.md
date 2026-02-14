@@ -27,4 +27,27 @@ pipeline {
         }
     }
 }
-
+# other case
+pipeline {
+    agent any
+    stages {
+        stage('Validando Condición') {
+            when {
+                anyOf {
+                    expression { env.GIT_BRANCH == 'origin/develop' }
+                    branch 'origin/develop'
+                }
+            }
+            steps {
+                script {
+                    echo "------------------------------------------------"
+                    echo "¡ÉXITO! La condición se cumplió."
+                    echo "GIT_BRANCH detectada es: ${env.GIT_BRANCH}"
+                    echo "------------------------------------------------"
+                }
+            }
+        }
+    }
+}
+# delete files
+rm -rf /var/jenkins_home/workspace/node-api-branch-develop*
