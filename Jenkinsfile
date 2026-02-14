@@ -86,15 +86,15 @@ pipeline {
             }
         }
 
-        stage('Verificación y Deploy') {
+       stage('Verificación y Deploy') {
             steps {
                 script {
-                    // Extraemos la rama actual directamente del sistema
-                    def actualBranch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-                    echo "--- RAMA DETECTADA POR SISTEMA: ${actualBranch} ---"
-
-                    if (actualBranch == 'develop' || actualBranch.contains('develop') || actualBranch.contains('PR-')) {
-                        echo "✅ VALIDACIÓN EXITOSA. Iniciando Docker..."
+                    // version-20
+                    def isDevelop = sh(script: "git branch -a --contains HEAD | grep 'origin/develop'", returnStatus: true) == 0
+                    
+                    echo "--- VALIDACIÓN DE RAMA ---"
+                    if (isDevelop) {
+                        echo "✅ VALIDACIÓN EXITOSA: El commit pertenece a develop. Iniciando Docker..."
                         
                         sh "docker build -t ${IMAGE_NAME}:${DOCKER_TAG} ."
                         sh "docker rm -f node-api-test-develop || true"                
