@@ -51,3 +51,4 @@ pipeline {
 }
 # delete files
 rm -rf /var/jenkins_home/workspace/node-api-branch-develop*
+
