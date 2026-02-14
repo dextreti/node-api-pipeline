@@ -86,6 +86,20 @@ pipeline {
             }
         }
 
+        stage('Verificación de Reglas') {
+            steps {
+                script {
+                    if (env.GIT_BRANCH?.contains('develop') || env.CHANGE_TARGET == 'develop') {
+                        echo "✅ REGLA CUMPLIDA: Se procederá al despliegue."
+                    } else {
+                        // AQUÍ es donde verías el mensaje si NO va a entrar al siguiente stage
+                        echo "❌ REGLA FALLIDA: El despliegue se saltará porque la rama no es develop."
+                        echo "Razón: GIT_BRANCH=${env.GIT_BRANCH}, CHANGE_TARGET=${env.CHANGE_TARGET}, BRANCH_NAME} = ${env.BRANCH_NAME}"
+                    }
+                }
+            }
+        }
+
         stage('Build & Deploy') {
             when {                 
                anyOf {
