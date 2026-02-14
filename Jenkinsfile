@@ -88,9 +88,10 @@ pipeline {
 
         stage('Build & Deploy') {
             when {                 
-                anyOf {                    
-                    expression { env.GIT_BRANCH == 'origin/develop' }                    
-                    branch 'develop'
+               anyOf {
+                    branch 'develop' // Para cuando ya es develop
+                    expression { env.CHANGE_TARGET == 'develop' } // Para cuando es un PR hacia develop
+                    expression { env.GIT_BRANCH?.contains('develop') } // El "comodín" que atrapa origin/develop
                 }
             }
             steps {
